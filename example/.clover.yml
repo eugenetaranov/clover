@@ -1,0 +1,18 @@
+---
+nodes:
+  - name: test
+    provider:
+      name: vagrant
+      box: centos/7
+      synced_folders:
+        - ansible:/ansible
+        - ~/tmp:/mnt
+      network:
+        forwarded_port:
+          - '80:8080:tcp'
+    provisioner:
+      name: ansible-local
+      playbook: /ansible/main.yml
+    verifier:
+      name: goss
+      goss_file: /ansible/tests/goss-apache.yml
