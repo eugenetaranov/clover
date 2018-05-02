@@ -1,12 +1,10 @@
 ---
 Clover is a tool for testing infrastructure code on isolated platform.
 ---
-It was heavily inspired by test-kitchen, just better :) - no ruby gems, allows multiple config files in the same directory, file sharing, custom shell provisioners.. Currently it supports [ansible](https://www.ansible.com) as provisioner and [goss](https://github.com/aelsabbahy/goss) as verifier. Currently support is limited to centos 7, expect more distros soon.
+It was heavily inspired by test-kitchen, just better :) - no ruby gems, allows multiple config files in the same directory, file sharing, custom shell provisioners.. Currently it supports [ansible](https://www.ansible.com) as provisioner and [goss](https://github.com/aelsabbahy/goss) as verifier.
 
 ### Dependencies
-- python 3+
 - vagrant
-- python libraries specified in requirements.txt
 
 ### Quick start
 1. Run `git clone <clover repo>`, cd into clover
@@ -28,8 +26,7 @@ It was heavily inspired by test-kitchen, just better :) - no ruby gems, allows m
 
 ###### Examples
 `clover converge`: converge all virtual machines defined in .clover.yml  
-`clover converge openvpn`: converge all virtual machines defined in openvpn.yml  
-`clover converge openvpn.yml`: same as above  
+`clover converge openvpn.yml`: converge all virtual machines defined in openvpn.yml 
 `clover verify openvpn.yml openvpnserver`: verify virtual machine *openvpnserver* defined in openvpn.yml  
 
 #### Configuration file
