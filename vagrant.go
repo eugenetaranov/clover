@@ -209,13 +209,18 @@ func convergeVagrant(node *nodeType, configFile string) (err error) {
 		fmt.Printf("Provisioning %s node with ansible:\n", node.Name)
 
 		var cmd *exec.Cmd
+		argsRaw := []string{"-i", fmt.Sprintf("%s/ansiblehosts_%s", vagrantDir, node.Name), node.Provisioner.Playbook}
 		if len(node.Provisioner.Extravars) > 0 {
-			fmt.Printf("\tansible-playbook -i %s/ansiblehosts_%s --extra-vars %s %s\n", vagrantDir, node.Name, strings.Join(node.Provisioner.Extravars, " "), node.Provisioner.Playbook)
-			cmd = exec.Command("ansible-playbook", "-i", fmt.Sprintf("%s/ansiblehosts_%s", vagrantDir, node.Name), "--extra-vars", strings.Join(node.Provisioner.Extravars, " "), node.Provisioner.Playbook)
-		} else {
-			fmt.Printf("\tansible-playbook -i %s/ansiblehosts_%s %s\n", vagrantDir, node.Name, node.Provisioner.Playbook)
-			cmd = exec.Command("ansible-playbook", "-i", fmt.Sprintf("%s/ansiblehosts_%s", vagrantDir, node.Name), node.Provisioner.Playbook)
+			var extraVars []string
+			for _, i := range node.Provisioner.Extravars {
+				extraVars = append(extraVars, "--extra-vars")
+				extraVars = append(extraVars, i)
+			}
+			argsRaw = append(argsRaw, extraVars...)
 		}
+
+		fmt.Println("    ", "ansible-playbook", strings.Join(argsRaw, " "))
+		cmd = exec.Command("ansible-playbook", argsRaw...)
 
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
