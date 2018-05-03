@@ -12,14 +12,6 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-type sshCommand struct {
-	Path   string
-	Env    []string
-	Stdin  io.Reader
-	Stdout io.Writer
-	Stderr io.Writer
-}
-
 func getVagrantSSHDetails2(node *nodeType, vagrantDir string, vmName string) (err error) {
 	os.Chdir(vagrantDir)
 	defer os.Chdir("..")
