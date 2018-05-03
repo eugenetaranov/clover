@@ -1,0 +1,17 @@
+package main
+
+import "fmt"
+
+func (node *nodeType) verify(vagrantDir string) (err error) {
+	if node.Verifier.Name == `goss` {
+		// err = node.sshNode(vagrantDir, "/usr/bin/goss --gossfile /mnt/goss.yaml validate", true)
+		// fmt.Println(vagrantDir, fmt.Sprintf("/usr/bin/goss --gossfile %s validate", node.Verifier.GossFile), true)
+		err = node.sshNode(vagrantDir, fmt.Sprintf("/usr/bin/goss --gossfile %s validate", node.Verifier.GossFile), true)
+		if err != nil {
+			return
+		}
+	} else {
+		err = fmt.Errorf("Unsupported verifier %s for node %s", node.Verifier.Name, node.Name)
+	}
+	return
+}

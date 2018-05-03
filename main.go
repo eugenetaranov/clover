@@ -39,6 +39,12 @@ type nodeType struct {
 		Name     string `yaml:"name"`
 		GossFile string `yaml:"goss_file"`
 	} `yaml:"verifier"`
+	SSH struct {
+		Host         string
+		User         string
+		Port         int
+		IdentityFile string
+	}
 }
 
 func (c *configType) Parse(data []byte) error {
@@ -77,8 +83,7 @@ func getNodeConf(conf *configType, vmName string) (node nodeType, err error) {
 }
 
 func execInstalled(executable string, params string) (err error) {
-	cmd := exec.Command(executable, params)
-	err = cmd.Run()
+	_, err = exec.LookPath(executable)
 	return
 }
 
@@ -104,7 +109,7 @@ func converge(node *nodeType, configFile string) (err error) {
 	return
 }
 
-func ssh(node *nodeType, vmName string, configFile string) (err error) {
+func sshNode1(node *nodeType, vmName string, configFile string) (err error) {
 	if node.Provider.Name == "vagrant" {
 		if err = sshVagrant(vmName, configFile); err != nil {
 			return
@@ -218,10 +223,35 @@ commands:
 			os.Exit(1)
 		}
 
-		err = ssh(&node, vmName.(string), configFile.(string))
+		err = sshNode1(&node, vmName.(string), configFile.(string))
 		if err != nil {
 			fmt.Println("Error:", err)
 			os.Exit(1)
+		}
+	}
+
+	if command == "verify" {
+
+		if vmName != nil {
+			fmt.Println("Verifying node", vmName)
+			node, err := getNodeConf(&conf, vmName.(string))
+			if err != nil {
+				fmt.Println("Error:", err)
+				os.Exit(1)
+			}
+			if err = node.verify(vagrantDir); err != nil {
+				fmt.Println("Error:", err)
+				os.Exit(1)
+			}
+		} else {
+			for _, node := range conf.Nodes {
+				fmt.Println("Verifying node", node.Name)
+				if err = node.verify(vagrantDir); err != nil {
+					fmt.Println("Error:", err)
+					os.Exit(1)
+				}
+				fmt.Println("*** Verified node", node.Name)
+			}
 		}
 	}
 
