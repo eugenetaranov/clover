@@ -47,11 +47,11 @@ const vagrantTemplate = `Vagrant.configure(2) do |config|
 	{{ $name }}.vm.synced_folder "{{ index $list 0}}", "{{ index $list 1}}"
 	{{ end }}
 	## shell
-	{{ if eq .Provisioner.Name "ansible-local" -}}
-	{{ $name }}.vm.provision "shell", path: "ansible.sh"
 	{{ if .Provisioner.Shell -}}
 	{{ $name }}.vm.provision "shell", path: "{{ $name }}.sh"
 	{{ end }}
+	{{ if eq .Provisioner.Name "ansible-local" -}}
+	{{ $name }}.vm.provision "shell", path: "ansible.sh"
 	{{ if .Provisioner.Playbook -}}
 	{{ $name }}.vm.provision "shell", inline: "ansible-playbook {{ .Provisioner.Playbook }}"
 	{{ end }}
