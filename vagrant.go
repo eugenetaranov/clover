@@ -196,6 +196,13 @@ func convergeVagrant(node *nodeType, configFile string) (err error) {
 		return fmt.Errorf("State is %s, destroy and run converge again", status)
 	}
 
+	sftpClient, err := node.sftpConn(vagrantDir)
+	if err != nil {
+		sftpClient.Close()
+		return err
+	}
+	defer sftpClient.Close()
+
 	// converge stage tasks
 	for i, provisioner := range node.Provisioner {
 
@@ -247,12 +254,6 @@ func convergeVagrant(node *nodeType, configFile string) (err error) {
 					}
 					os.Chdir("../..")
 				}
-			}
-
-			sftpClient, err := node.sftpConn(vagrantDir)
-			if err != nil {
-				sftpClient.Close()
-				return err
 			}
 
 			if _, err = sftpClient.Lstat(".clover"); os.IsNotExist(err) {
