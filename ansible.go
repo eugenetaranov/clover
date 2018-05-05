@@ -28,16 +28,16 @@ type ansibleHost struct {
 }
 
 // generates ansible hosts file for node <vagrantdir>/ansiblehosts_<nodename>
-func generateAnsibleHosts(node *nodeType, vagrantDir string) (err error) {
-	if _, statErr := os.Stat(fmt.Sprintf("%s/ansiblehosts_%s", vagrantDir, node.Name)); os.IsNotExist(statErr) {
-		sshConn, _ := getVagrantSSHDetails(vagrantDir, node.Name)
+func generateAnsibleHosts(nodeName string, provisioner Provisioner, vagrantDir string) (err error) {
+	if _, statErr := os.Stat(fmt.Sprintf("%s/ansiblehosts_%s", vagrantDir, nodeName)); os.IsNotExist(statErr) {
+		sshConn, _ := getVagrantSSHDetails(vagrantDir, nodeName)
 		if err != nil {
 			return err
 		}
 
 		var ansibleHost ansibleHost
 		ansibleHost.SSH = sshConn
-		ansibleHost.Groups = node.Provisioner.Groups
+		ansibleHost.Groups = provisioner.Groups
 
 		var tpl bytes.Buffer
 		vc, err := template.New("hosts").Parse(ansibleHostsTemplate)
@@ -48,7 +48,7 @@ func generateAnsibleHosts(node *nodeType, vagrantDir string) (err error) {
 		ansibleHostsFileContent := tpl.String()
 
 		os.Chdir(vagrantDir)
-		if err := writeFile(fmt.Sprintf("ansiblehosts_%s", node.Name), ansibleHostsFileContent); err != nil {
+		if err := writeFile(fmt.Sprintf("ansiblehosts_%s", nodeName), ansibleHostsFileContent); err != nil {
 			return err
 		}
 		os.Chdir("..")

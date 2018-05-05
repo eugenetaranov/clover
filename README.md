@@ -38,10 +38,10 @@ It was heavily inspired by test-kitchen, just better :) - no ruby gems, allows m
 `node[].provider.synced_folders` - optional, list of local directories that are mounted into virtual machine, host path is separated with `:` from vm path. VM path must be absolute.  
 `node[].provider.network` - optional, network settings go here  
 `node[].provider.network.forwarded_port` - optional, list of host ports forwarded to vm ports, host port, vm port and protocol are separated by `:`  
-`node[].provisioner` - required, provisioner section, applied during converge phase
-`node[].provisioner.name` - required, provisioner name, currently `ansible-local` only is supported  
-`node[].provisioner.playbook` - required, provisioner name, ansible playbook path, absolute inside th the virtual machine    
-`node[].provisioner.shell` - optional, custom shell commands to be run during converge phase  
+`node[].provisioner[]` - required, provisioner section, applied during converge phase, list
+`node[].provisioner[].name` - required, provisioner name, currently `ansible-local` only is supported  
+`node[].provisioner[].playbook` - required, provisioner name, ansible playbook path, absolute inside th the virtual machine    
+`node[].provisioner[].content` - optional, shell commands to be run during converge phase  
 `node[].verifier` - optional, applied during verifier phase  
 `node[].verifier.name` - optional, verifier's name, currently goss only
 `node[].verifier.goss_file` - optional, absolute path to the goss file inside vm  
@@ -51,21 +51,26 @@ Example:
 ```
 ---
 nodes:
-  - name: test
+  - name: web
     provider:
       name: vagrant
-      box: centos/7
+      box: hashicorp-vagrant/ubuntu-16.04
       synced_folders:
         - ansible:/ansible
-        - ~/tmp:/mnt
-      network:
-        forwarded_port:
-          - '80:8080:tcp'
     provisioner:
-      name: ansible-local
-      playbook: /ansible/main.yml
+       - name: ansible
+         playbook: ../web.yaml
+         groups:
+           - webservers
+         extra_vars:
+           - '@../envs/prod/group_vars/webservers/environment'
+      - name: shell
+        content: |
+          #!/bin/bash
+          test -f /usr/bin/goss || curl -L https://github.com/aelsabbahy/goss/releases/download/v0.3.5/goss-linux-amd64 -o /usr/bin/goss
+          chmod +x /usr/bin/goss
     verifier:
       name: goss
-      goss_file: /ansible/tests/goss-apache.yml
+      goss_file: /mnt/goss.yml
 
 ```

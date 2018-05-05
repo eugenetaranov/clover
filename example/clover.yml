@@ -1,0 +1,21 @@
+---
+nodes:
+  - name: web
+    provider:
+      name: vagrant
+      box: hashicorp-vagrant/ubuntu-16.04
+    provisioner:
+       - name: ansible
+         playbook: ../web.yaml
+         groups:
+           - webservers
+         extra_vars:
+           - '@../envs/prod/group_vars/webservers/environment'
+      - name: shell
+        content: |
+          #!/bin/bash
+          test -f /usr/bin/goss || curl -L https://github.com/aelsabbahy/goss/releases/download/v0.3.5/goss-linux-amd64 -o /usr/bin/goss
+          chmod +x /usr/bin/goss
+    verifier:
+      name: goss
+      goss_file: /mnt/goss.yml

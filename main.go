@@ -18,6 +18,15 @@ type configType struct {
 	Nodes []nodeType `yaml:"nodes"`
 }
 
+type Provisioner struct {
+	Name      string   `yaml:"name"`
+	Playbook  string   `yaml:"playbook"`
+	Content   string   `yaml:"content"`
+	RunOnce   bool     `yaml:"run_once"`
+	Groups    []string `yaml:"groups"`
+	Extravars []string `yaml:"extra_vars"`
+}
+
 type nodeType struct {
 	Name     string `yaml:"name"`
 	Provider struct {
@@ -28,14 +37,8 @@ type nodeType struct {
 			ForwardedPort []string `yaml:"forwarded_port"`
 		} `yaml:"network"`
 	} `yaml:"provider"`
-	Provisioner struct {
-		Name      string   `yaml:"name"`
-		Playbook  string   `yaml:"playbook"`
-		Shell     string   `yaml:"shell"`
-		Groups    []string `yaml:"groups"`
-		Extravars []string `yaml:"extra_vars"`
-	} `yaml:"provisioner"`
-	Verifier struct {
+	Provisioner []Provisioner `yaml:"provisioner"`
+	Verifier    struct {
 		Name     string `yaml:"name"`
 		GossFile string `yaml:"goss_file"`
 	} `yaml:"verifier"`

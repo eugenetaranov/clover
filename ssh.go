@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pkg/sftp"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -39,7 +40,7 @@ func getVagrantSSHDetails2(node *nodeType, vagrantDir string, vmName string) (er
 	return
 }
 
-func (node *nodeType) sshNode(vagrantDir string, cmd string, output bool) (err error) {
+func sshConnection(node *nodeType, vagrantDir string) (client *ssh.Client, err error) {
 	getVagrantSSHDetails2(node, vagrantDir, node.Name)
 
 	key, err := ioutil.ReadFile(node.SSH.IdentityFile)
@@ -60,7 +61,29 @@ func (node *nodeType) sshNode(vagrantDir string, cmd string, output bool) (err e
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	client, err := ssh.Dial("tcp", fmt.Sprintf("%s:%s", node.SSH.Host, strconv.Itoa(node.SSH.Port)), config)
+	client, err = ssh.Dial("tcp", fmt.Sprintf("%s:%s", node.SSH.Host, strconv.Itoa(node.SSH.Port)), config)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (node *nodeType) sftpConn(vagrantDir string) (sftpClient *sftp.Client, err error) {
+	client, err := sshConnection(node, vagrantDir)
+	if err != nil {
+		return
+	}
+	sftpClient, err = sftp.NewClient(client)
+	if err != nil {
+		sftpClient.Close()
+		client.Close()
+		return
+	}
+	return
+}
+
+func (node *nodeType) sshCommand(vagrantDir string, cmd string, output bool) (err error) {
+	client, err := sshConnection(node, vagrantDir)
 	if err != nil {
 		return
 	}

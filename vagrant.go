@@ -42,24 +42,25 @@ const vagrantTemplate = `Vagrant.configure(2) do |config|
 	{{- end }}
 	## synced folders
 	{{ $name }}.vm.synced_folder ".", "/vagrant", disabled: true
+	{{ $name }}.vm.synced_folder "{{ $name }}", "/clover"
 	{{ range .Provider.SyncedFolders -}}
 	{{ $list := resolveDir . }}
 	{{ $name }}.vm.synced_folder "{{ index $list 0}}", "{{ index $list 1}}"
 	{{ end }}
 	## shell
-	{{ if .Provisioner.Shell -}}
-	{{ $name }}.vm.provision "shell", path: "{{ $name }}.sh"
-	{{ end }}
-	{{ if eq .Provisioner.Name "ansible-local" -}}
+	{{ range .Provisioner }}
+	{{ if eq .Name "ansible-local" -}}
 	{{ $name }}.vm.provision "shell", path: "ansible.sh"
-	{{ if .Provisioner.Playbook -}}
-	{{ $name }}.vm.provision "shell", inline: "ansible-playbook {{ .Provisioner.Playbook }}"
+	{{ if .Playbook -}}
+	{{ $name }}.vm.provision "shell", inline: "ansible-playbook {{ .Playbook }}"
+	{{ end }}
 	{{ end }}
 	{{ end }}
   end
 {{ end }}
 end`
 
+// converts "<hostdir>:<vmdir>" string into slice of strings with absolute paths
 func resolveDir(dirPath string) (dirs []string, err error) {
 	dirList := strings.Split(dirPath, ":")
 	if len(dirList) != 2 {
@@ -141,28 +142,28 @@ func convergeVagrant(node *nodeType, configFile string) (err error) {
 		return
 	}
 
-	// generate shell provisioner script, if any
-	if node.Provisioner.Shell != "" {
-		if _, err = os.Stat(fmt.Sprintf("%s/%s.sh", vagrantDir, node.Name)); os.IsNotExist(err) {
-			os.Chdir(vagrantDir)
-			err = writeFile(fmt.Sprintf("%s.sh", node.Name), node.Provisioner.Shell)
-			if err != nil {
-				return
-			}
-			os.Chdir("..")
-
+	// .<vagrantDir>/<node.Name>
+	nodeDir := filepath.Join(vagrantDir, node.Name)
+	if _, statErr := os.Stat(nodeDir); os.IsNotExist(statErr) {
+		err = os.Mkdir(nodeDir, 0755)
+		if err != nil {
+			return
 		}
 	}
 
-	// generate ansible installation script for ansible-local provider
-	if node.Provisioner.Name == "ansible-local" {
-		if _, err = os.Stat(fmt.Sprintf("%s/ansible.sh", vagrantDir)); os.IsNotExist(err) {
-			os.Chdir(vagrantDir)
+	// install stage tasks
+	for _, provisioner := range node.Provisioner {
 
-			if err = writeFile("ansible.sh", ansiblesh); err != nil {
-				fmt.Println("Error:", err)
+		// generate ansible installation script for ansible-local provider before vagrant up
+		if provisioner.Name == "ansible-local" {
+			if _, err = os.Stat(filepath.Join(nodeDir, "ansible.sh")); os.IsNotExist(err) {
+				os.Chdir(nodeDir)
+
+				if err = writeFile("ansible.sh", ansiblesh); err != nil {
+					fmt.Println("Error:", err)
+				}
+				os.Chdir("../..")
 			}
-			os.Chdir("..")
 		}
 	}
 
@@ -188,45 +189,91 @@ func convergeVagrant(node *nodeType, configFile string) (err error) {
 		cmd.Stderr = os.Stderr
 		err = cmd.Run()
 		if err != nil {
-			fmt.Println("Error:", err)
-			os.Exit(1)
+			return
 		}
 		os.Chdir("..")
 	} else {
-		fmt.Printf("State is %s, better destroy and run converge again", status)
-		os.Exit(1)
+		return fmt.Errorf("State is %s, destroy and run converge again", status)
 	}
 
-	if node.Provisioner.Name == "ansible" {
-		if err = generateAnsibleHosts(node, vagrantDir); err != nil {
-			return
-		}
+	// converge stage tasks
+	for i, provisioner := range node.Provisioner {
 
-		if err = execInstalled("ansible-playbook", "--version"); err != nil {
-			return
-		}
-
-		fmt.Printf("Provisioning %s node with ansible:\n", node.Name)
-
-		var cmd *exec.Cmd
-		argsRaw := []string{"-i", fmt.Sprintf("%s/ansiblehosts_%s", vagrantDir, node.Name), node.Provisioner.Playbook}
-		if len(node.Provisioner.Extravars) > 0 {
-			var extraVars []string
-			for _, i := range node.Provisioner.Extravars {
-				extraVars = append(extraVars, "--extra-vars")
-				extraVars = append(extraVars, i)
+		// ansible provisioner
+		if provisioner.Name == "ansible" {
+			if err = execInstalled("ansible-playbook", "--version"); err != nil {
+				return
 			}
-			argsRaw = append(argsRaw, extraVars...)
+
+			if err = generateAnsibleHosts(node.Name, provisioner, vagrantDir); err != nil {
+				return
+			}
+
+			fmt.Printf("Provisioning %s node with ansible:\n", node.Name)
+
+			var cmd *exec.Cmd
+			argsRaw := []string{"-i", fmt.Sprintf("%s/ansiblehosts_%s", vagrantDir, node.Name), provisioner.Playbook}
+			if len(provisioner.Extravars) > 0 {
+				var extraVars []string
+				for _, i := range provisioner.Extravars {
+					extraVars = append(extraVars, "--extra-vars")
+					extraVars = append(extraVars, i)
+				}
+				argsRaw = append(argsRaw, extraVars...)
+			}
+
+			fmt.Println("    ", "ansible-playbook", strings.Join(argsRaw, " "))
+			cmd = exec.Command("ansible-playbook", argsRaw...)
+
+			cmd.Stdin = os.Stdin
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			err = cmd.Run()
+			if err != nil {
+				return
+			}
 		}
 
-		fmt.Println("    ", "ansible-playbook", strings.Join(argsRaw, " "))
-		cmd = exec.Command("ansible-playbook", argsRaw...)
+		// shell provisioners
+		if provisioner.Name == "shell" {
 
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		err = cmd.Run()
+			// put sh script into .<vagrantDir>/<nodeName> which is mounted into
+			if node.Provider.Name == "vagrant" {
+				if _, err = os.Stat(filepath.Join(nodeDir, fmt.Sprintf("%d.sh", i))); os.IsNotExist(err) {
+					os.Chdir(nodeDir)
+					err = writeFile(fmt.Sprintf("%d.sh", i), provisioner.Content)
+					if err != nil {
+						return
+					}
+					os.Chdir("../..")
+				}
+			}
+
+			sftpClient, err := node.sftpConn(vagrantDir)
+			if err != nil {
+				sftpClient.Close()
+				return err
+			}
+
+			if _, err = sftpClient.Lstat(".clover"); os.IsNotExist(err) {
+				if err = sftpClient.Mkdir(".clover"); err != nil {
+					return err
+				}
+			}
+
+			// generate shell script
+			f, err := sftpClient.Create(sftpClient.Join(".clover", fmt.Sprintf("%d.sh", i)))
+			if err != nil {
+				log.Fatal(err)
+			}
+			if _, err := f.Write([]byte(provisioner.Content)); err != nil {
+				log.Fatal(err)
+			}
+
+			node.sshCommand(vagrantDir, "sudo bash "+filepath.Join(".clover", fmt.Sprintf("%d.sh", i)), true)
+		}
 	}
+
 	return
 }
 

@@ -4,7 +4,7 @@ import "fmt"
 
 func (node *nodeType) verify(vagrantDir string) (err error) {
 	if node.Verifier.Name == `goss` {
-		err = node.sshNode(vagrantDir, fmt.Sprintf("/usr/bin/goss --gossfile %s validate", node.Verifier.GossFile), true)
+		err = node.sshCommand(vagrantDir, fmt.Sprintf("sudo /usr/bin/goss --gossfile %s validate", node.Verifier.GossFile), true)
 		if err != nil {
 			return
 		}
