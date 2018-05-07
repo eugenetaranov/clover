@@ -16,6 +16,13 @@ nodes:
           #!/bin/bash
           test -f /usr/bin/goss || curl -L https://github.com/aelsabbahy/goss/releases/download/v0.3.5/goss-linux-amd64 -o /usr/bin/goss
           chmod +x /usr/bin/goss
+    files:
+      - path: /tmp/test
+        mode: 0600
+        user: nobody
+        group: nobody
+        content: |
+          test
     verifier:
       name: goss
       goss_file: /mnt/goss.yml

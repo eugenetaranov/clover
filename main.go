@@ -27,6 +27,14 @@ type Provisioner struct {
 	Extravars []string `yaml:"extra_vars"`
 }
 
+type File struct {
+	Path    string `yaml:"path"`
+	Mode    uint32 `mode:"mode"`
+	Content string `yaml:"content"`
+	User    string `yaml:"user"`
+	Group   string `yaml:"group"`
+}
+
 type nodeType struct {
 	Name     string `yaml:"name"`
 	Provider struct {
@@ -42,7 +50,8 @@ type nodeType struct {
 		Name     string `yaml:"name"`
 		GossFile string `yaml:"goss_file"`
 	} `yaml:"verifier"`
-	SSH struct {
+	Files []File `yaml:"files"`
+	SSH   struct {
 		Host         string
 		User         string
 		Port         int

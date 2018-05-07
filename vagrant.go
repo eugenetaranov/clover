@@ -203,6 +203,52 @@ func convergeVagrant(node *nodeType, configFile string) (err error) {
 	}
 	defer sftpClient.Close()
 
+	// uploading files
+	for _, file := range node.Files {
+		// check if file exists
+		if _, err = sftpClient.Lstat(file.Path); os.IsNotExist(err) {
+
+			// upload file into temporary location
+			tmpFileName := randFileName()
+			f, err := sftpClient.Create(sftpClient.Join(".clover", tmpFileName))
+			if err != nil {
+				return err
+			}
+			if _, err := f.Write([]byte(file.Content)); err != nil {
+				return err
+			}
+			f.Close()
+
+			// create dir if not exists
+			if _, err = sftpClient.Lstat(filepath.Dir(file.Path)); os.IsNotExist(err) {
+				if err = node.sshCommand(vagrantDir, fmt.Sprintf("sudo mkdir -p %s", filepath.Dir(file.Path)), false); err != nil {
+					return err
+				}
+			}
+
+			// move temprorary file into destination
+			if err = node.sshCommand(vagrantDir, fmt.Sprintf("sudo mv %s %s", sftpClient.Join(".clover", tmpFileName), file.Path), false); err != nil {
+				return err
+			}
+
+			// reset owner and group
+			if file.User != "" && file.Group != "" {
+				if err = node.sshCommand(vagrantDir, fmt.Sprintf("sudo chown %s:%s %s", file.User, file.Group, file.Path), false); err != nil {
+					return err
+				}
+			}
+
+			// reset mode
+			if file.Mode != 0 {
+				if err = node.sshCommand(vagrantDir, fmt.Sprintf("sudo chmod %d %s", file.Mode, file.Path), false); err != nil {
+					return err
+				}
+
+			}
+
+		}
+	}
+
 	// converge stage tasks
 	for i, provisioner := range node.Provisioner {
 
@@ -265,11 +311,12 @@ func convergeVagrant(node *nodeType, configFile string) (err error) {
 			// generate shell script
 			f, err := sftpClient.Create(sftpClient.Join(".clover", fmt.Sprintf("%d.sh", i)))
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 			if _, err := f.Write([]byte(provisioner.Content)); err != nil {
-				log.Fatal(err)
+				return err
 			}
+			f.Close()
 
 			node.sshCommand(vagrantDir, "sudo bash "+filepath.Join(".clover", fmt.Sprintf("%d.sh", i)), true)
 		}
