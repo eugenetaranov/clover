@@ -203,8 +203,16 @@ func convergeVagrant(node *nodeType, configFile string) (err error) {
 	}
 	defer sftpClient.Close()
 
+	// create tmp dir
+	if _, err = sftpClient.Lstat(".clover"); os.IsNotExist(err) {
+		if err = sftpClient.Mkdir(".clover"); err != nil {
+			return
+		}
+	}
+
 	// uploading files
 	for _, file := range node.Files {
+
 		// check if file exists
 		if _, err = sftpClient.Lstat(file.Path); os.IsNotExist(err) {
 
@@ -299,12 +307,6 @@ func convergeVagrant(node *nodeType, configFile string) (err error) {
 						return
 					}
 					os.Chdir("../..")
-				}
-			}
-
-			if _, err = sftpClient.Lstat(".clover"); os.IsNotExist(err) {
-				if err = sftpClient.Mkdir(".clover"); err != nil {
-					return err
 				}
 			}
 
