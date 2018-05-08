@@ -13,11 +13,11 @@ yum && yum install -y ansible
 `
 
 const ansibleHostsTemplate = `{{ $ssh := .SSH }}
-default ansible_host={{ $ssh.Host }} ansible_user={{ $ssh.User }} ansible_port={{ $ssh.Port }} ansible_ssh_private_key_file={{ $ssh.IdentityFile }}
+default ansible_host={{ $ssh.Host }} ansible_user={{ $ssh.User }} ansible_port={{ $ssh.Port }} ansible_ssh_private_key_file={{ $ssh.IdentityFile }} ansible_ssh_extra_args='-o StrictHostKeyChecking=no'
 {{ if .Groups }}
 {{ range .Groups -}}
 [{{ . }}]
-default ansible_host={{ $ssh.Host }} ansible_user={{ $ssh.User }} ansible_port={{ $ssh.Port }} ansible_ssh_private_key_file={{ $ssh.IdentityFile }}
+default ansible_host={{ $ssh.Host }} ansible_user={{ $ssh.User }} ansible_port={{ $ssh.Port }} ansible_ssh_private_key_file={{ $ssh.IdentityFile }} ansible_ssh_extra_args='-o StrictHostKeyChecking=no'
 {{ end }}
 {{ end }}
 `
