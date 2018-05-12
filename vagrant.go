@@ -34,10 +34,10 @@ const vagrantTemplate = `Vagrant.configure(2) do |config|
 	{{ range .Provider.Network.ForwardedPort -}}
 	{{ $list := split . ":" -}}
 	{{ if eq (len $list) 5 }}
-	{{- $name }}.vm.network "forwarded_port", guest_ip: "{{ index $list 0}}", guest: {{ index $list 1}}, host_ip: "{{ index $list 2}}", host: {{ index $list 3}}, protocol: "{{ index $list 4 -}}"
+	{{- $name }}.vm.network "forwarded_port", guest_ip: "{{ index $list 2}}", guest: {{ index $list 3}}, host_ip: "{{ index $list 0}}", host: {{ index $list 1}}, protocol: "{{ index $list 4 -}}"
 	{{ end }}
 	{{ if eq (len $list) 3 }}
-	{{- $name }}.vm.network "forwarded_port", guest_ip: "127.0.0.1", guest: {{ index $list 0}}, host_ip: "127.0.0.1", host: {{ index $list 1}}, protocol: "{{ index $list 2 -}}"
+	{{- $name }}.vm.network "forwarded_port", guest_ip: "127.0.0.1", guest: {{ index $list 1}}, host_ip: "127.0.0.1", host: {{ index $list 0}}, protocol: "{{ index $list 2 -}}"
 	{{ end }}
 	{{- end }}
 	## synced folders
